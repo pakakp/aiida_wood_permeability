@@ -1,0 +1,21 @@
+[
+    {
+        "sizeVolume": [400, 400, 400],
+        "random_seed": 10,
+        "saveSlice": "all", 
+        "cellR": 16,
+        "cellLength": 2339,
+        "cellLengthVariance": 580,
+        "rayCellLength": 61,
+        "rayCell_variance": 14,
+        "rayCellNum": 11.30,
+        "rayCellNumStd": 3.30,
+        "vesselLength": 400,
+        "vesselLengthVariance": 100,
+        "raywHeight": 40,
+        "raySpace": 19,
+        "isExistVessel": 1,
+        "isExistRayCell": 1,
+        "cellWallThick": 4
+    }
+]

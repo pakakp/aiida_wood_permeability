@@ -1,0 +1,33 @@
+[build-system]
+requires = ['flit_core >=3.4,<4']
+build-backend = 'flit_core.buildapi'
+
+[project]
+name = 'aiida-wood-permeability'
+version = '0.2.0'
+description = 'AiiDA plugin for wood permeability calculations using OpenLB'
+authors = [
+    {name = 'Antti Puisto', email = 'antti.puisto@vtt.fi'},
+]
+readme = 'README.md'
+requires-python = '>=3.9'
+dependencies = [
+    'aiida-core>=2.5.1',
+    'aiida-shell',  # Much simpler than full CalcJob!
+    'numpy',
+    'vtk',
+    # Add wood_microstructure if needed
+]
+
+[project.entry-points."aiida.workflows"]
+"wood_permeability.wood_structure_generator"      = "aiida_wood_permeability.workflows:WoodStructureGeneratorWorkChain"
+"wood_permeability.structure_filter"              = "aiida_wood_permeability.workflows:StructureFilterWorkChain"
+"wood_permeability.single_structure_permeability" = "aiida_wood_permeability.workflows:SingleStructurePermeabilityWorkChain"
+"wood_permeability.wood_permeability"             = "aiida_wood_permeability.workflows:WoodPermeabilityWorkChain"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["aiida_wood_permeability*"]
+
+[tool.flit.module]
+name = 'aiida_wood_permeability'

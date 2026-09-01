@@ -1,0 +1,153 @@
+# ─────────────────────────────────────────────────────────────────────
+# Wood permeability pipeline configuration.
+#
+# Loaded by wood_config.load_config(), which every phaseN_*.py and
+# submit_wood_permeability.py script imports. Override the file used
+# with:
+#     export WOOD_CONFIG=/path/to/my_config.yaml
+#
+# Note on scientific notation: PyYAML's safe_load only parses a number
+# as a float if it contains a decimal point (e.g. 1.0e-14, not 1e-14).
+# Keep the ".0" in any exponent value you add below.
+# ─────────────────────────────────────────────────────────────────────
+
+wood_type: birch  # or spruce
+
+paths:
+  base_json_template: "PATH_TO/modified_{wood_type}.json"
+  structure_generator_script: "PATH_TO/structure_generator.py"
+
+codes:
+  generator:    "wood-microstructure@AITW"
+  filter:       "filter-tiff2vti@AITW"
+  permeability: "openlb-permeability@host"
+
+# ── used by phase1_generate_structures.py ───────────────────────────
+phase1:
+  cell_radii:   [13, 14, 15, 16, 17, 18]
+  wall_thicks:  [2, 3, 4, 5, 6]
+  resolutions:  [[500, 500, 500]]
+  random_seeds: [10, 20, 100, 200, 1000, 2000, 10000, 20000]  # 100000, 200000
+  metadata_options:
+    resources:
+      num_machines: 1
+      num_mpiprocs_per_machine: 1
+    max_wallclock_seconds: 12000
+    queue_name: "yourqueue"
+    custom_scheduler_commands: "#SBATCH --mem=16G"
+    withmpi: false
+
+# ── used by phase2_filter.py ─────────────────────────────────────────
+phase2:
+  sigmas: [0.3]
+  overrides: {}
+  defaults:
+    threshold: 127
+    solid_dark: false
+    down: 1
+    smooth_low_iters: 0
+    smooth_sigma: 1.5
+    thicken: 0
+    final_smooth_iters: 0
+    final_smooth_sigma: 1.3
+    upsample_final: 1
+    upsample_intermediate: 1
+    pad: 0
+    pad_xy_only: false
+    porosity: null
+    sdf_sigma: null
+    adjust_porosity_post: false
+    allow_boundary_removal: true
+    majority_filter: 1
+    min_gradient: 0.2
+    verbose: false
+
+# ── used by phase3_permeability.py ───────────────────────────────────
+phase3:
+  d_solids: [1.0e-14]  # 3.0e-15, 7.0e-15, 1.0e-14, 1.5e-14, 2.0e-14, 7.35e-14
+  guozhaos: [0]
+  overrides: {}
+  defaults:
+    arrayname: "ImageFile"
+    scaling_factor: 5.0e-7
+    uout: 1.0
+    tau: 1.0
+    pressure_drop: 10.0
+    kinematicViscosity: 1.0e-4
+    fluidDensity: 1.0
+    tolerance: 1.0e-6
+    flowDirection: 1
+    uniformguozhao: 1
+  metadata_options:
+    options:
+      resources:
+        num_machines: 1
+        num_mpiprocs_per_machine: 32
+      max_wallclock_seconds: 272800
+      queue_name: "thequeues"
+      custom_scheduler_commands: "#SBATCH --mem=190G"
+      withmpi: true
+      prepend_text:
+        - "module load openmpi"
+        - "export OMPI_MCA_btl=^smcuda"
+        - "export OMPI_MCA_accelerator=^cuda"
+        - "export OMPI_MCA_mtl=^ofi"
+
+# ── used by submit_wood_permeability.py (single automated WorkChain) ─
+# Kept separate from phase1/2/3 above since it intentionally runs a
+# smaller/different sweep (e.g. lower resolution) for the all-in-one path.
+pipeline:
+  cell_radii:   [13, 14, 15, 16, 17, 18]
+  wall_thicks:  [2, 3, 4, 5, 6]
+  resolutions:  [[50, 50, 50]]
+  random_seeds: [10, 20]
+  sigmas: [0.3]
+  filter_defaults:
+    threshold: 127
+    solid_dark: false
+    down: 1
+    smooth_low_iters: 0
+    smooth_sigma: 1.5
+    thicken: 0
+    final_smooth_iters: 0
+    final_smooth_sigma: 1.3
+    upsample_final: 1
+    upsample_intermediate: 1
+    pad: 0
+    pad_xy_only: false
+    porosity: null
+    sdf_sigma: null
+    adjust_porosity_post: false
+    allow_boundary_removal: true
+    majority_filter: 1
+    min_gradient: 0.2
+    verbose: false
+  filter_overrides: {}
+  d_solids: [1.0e-14]
+  guozhaos: [0]
+  permeability_defaults:
+    arrayname: "ImageFile"
+    scaling_factor: 5.0e-7
+    uout: 1.0
+    tau: 1.0
+    pressure_drop: 10.0
+    kinematicViscosity: 1.0e-4
+    fluidDensity: 1.0
+    tolerance: 1.0e-6
+    flowDirection: 1
+    uniformguozhao: 1
+  permeability_overrides: {}
+  metadata_options:
+    options:
+      resources:
+        num_machines: 1
+        num_mpiprocs_per_machine: 32
+      max_wallclock_seconds: 272800
+      queue_name: "gen04_epyc,gen05_epyc"
+      custom_scheduler_commands: "#SBATCH --mem=190G"
+      withmpi: true
+      prepend_text:
+        - "module load openmpi"
+        - "export OMPI_MCA_btl=^smcuda"
+        - "export OMPI_MCA_accelerator=^cuda"
+        - "export OMPI_MCA_mtl=^ofi"
