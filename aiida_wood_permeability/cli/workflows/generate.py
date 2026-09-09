@@ -22,10 +22,10 @@ from ..utils import launch, options
 @options.PARAM_SEED(required=False)
 @options.CLEAN_WORKDIR()
 # Resources
-@options.NUM_NODES()
-@options.NUM_MPIPROCS_PER_MACHINE(required=False)
+# @options.NUM_NODES()
+# @options.NUM_MPIPROCS_PER_MACHINE(required=False)
 @options.MAX_WALLCLOCK_SECONDS()
-@options.WITH_MPI(default=False)
+# @options.WITH_MPI(default=False)
 @options.DAEMON()
 @decorators.with_dbenv()
 def launch_workflow(
@@ -37,8 +37,11 @@ def launch_workflow(
     cell_r, cell_wall_thickness, resolution, seed,
     clean_workdir,
     # Resources
-    num_nodes, num_mpiprocs_per_machine, max_wallclock_seconds,
-    with_mpi, daemon
+    max_wallclock_seconds,
+    # num_nodes,
+    # num_mpiprocs_per_machine,
+    # with_mpi,
+    daemon
 ):
     """Launch the infiltration workflow."""
     from aiida.plugins import WorkflowFactory
@@ -77,13 +80,15 @@ def launch_workflow(
         mdata_options = {'resources': {}}
         resources = mdata_options['resources']
 
+        num_nodes = 1
+        num_mpiprocs_per_machine = 1
+        with_mpi = False
+
         resources['num_machines'] = num_nodes
         mdata_options['withmpi'] = with_mpi
         mdata_options['max_wallclock_seconds'] = max_wallclock_seconds
         if num_mpiprocs_per_machine is not None:
             resources['num_mpiprocs_per_machine'] = num_mpiprocs_per_machine
-
-        # builder.metadata = metadata
         builder.shelljob.metadata.options = mdata_options
 
         launch.launch_process(builder, daemon=daemon)
