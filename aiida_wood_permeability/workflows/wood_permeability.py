@@ -4,18 +4,17 @@ parameters over the cached VTI files.
 
 Phase 1 – generate structures    (WoodStructureGeneratorWorkChain per cellR×res×seed)
 Phase 2 – filter structures      (StructureFilterWorkChain per structure×porosity)
-Phase 3 – permeability sweep     (SingleStructurePermeabilityWorkChain per VTI×dSolid)
+Phase 3 – permeability sweep     (OLBPermeabilityWorkChain per VTI×dSolid)
 """
 import itertools
 import re
 
 from aiida import orm
-from aiida.engine import WorkChain, ToContext
+from aiida.engine import ToContext, WorkChain
 
-from aiida_wood_permeability.workflows.wood_structure_generator import WoodStructureGeneratorWorkChain
-from aiida_wood_permeability.workflows.structure_filter import StructureFilterWorkChain
-from .single_structure_permeability import SingleStructurePermeabilityWorkChain
-
+from .olb_permeability import OLBPermeabilityWorkChain
+from .structure_filter import StructureFilterWorkChain
+from .wood_structure_generator import WoodStructureGeneratorWorkChain
 
 # ── DEFAULT FILTER PARAMETERS ────────────────────────────────────────────────
 FILTER_DEFAULTS = {
@@ -50,7 +49,7 @@ PERMEABILITY_DEFAULTS = {
     'kinematicViscosity': 1e-4,
     'fluidDensity':       1.0,
     'tolerance':          1e-6,
-    'flowDirection':      1,  # overridden per direction inside SingleStructurePermeabilityWorkChain
+    'flowDirection':      1,  # overridden per direction inside OLBPermeabilityWorkChain
     'uniformguozhao':     1,
 }
 
@@ -70,7 +69,7 @@ class WoodPermeabilityWorkChain(WorkChain):
     2. collect_structures   – gather successful tars; skip failures
     3. filter_structures    – one StructureFilterWorkChain per structure × porosity
     4. collect_filtered     – gather successful VTIs; skip failures
-    5. submit_permeability  – one SingleStructurePermeabilityWorkChain per VTI × dSolid
+    5. submit_permeability  – one OLBPermeabilityWorkChain per VTI × dSolid
     6. collect_results      – gather successful results; skip failures
     """
 
@@ -366,7 +365,7 @@ class WoodPermeabilityWorkChain(WorkChain):
                 )
 
                 future = self.submit(
-                    SingleStructurePermeabilityWorkChain,
+                    OLBPermeabilityWorkChain,
                     code=self.inputs.permeability_code,
                     vti_file=flt['vti_node'],
                     parameters=permeability_params,
@@ -440,7 +439,7 @@ class WoodPermeabilityWorkChain(WorkChain):
         for label, vti in vti_outs.items():
             self.out(f'vti_files.{label}', vti)
 
-        self.report("=" * 50)
-        self.report("WoodPermeabilityWorkChain complete!")
+        self.report('=' * 50)
+        self.report('WoodPermeabilityWorkChain complete!')
         self.report(f"  {n_ok} successful runs, {n_fail} skipped")
-        self.report("=" * 50)
+        self.report('=' * 50)

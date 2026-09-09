@@ -18,7 +18,7 @@ from ..utils import launch, options
 # Optional parameters,
 @options.PARAM_CELL_R(required=False)
 @options.PARAM_CELL_WALL_THICKNESS(required=False)
-@options.PARAM_RESOLUTION(required=False)
+@options.GRID_RESOLUTION(required=False)
 @options.PARAM_SEED(required=False)
 @options.CLEAN_WORKDIR()
 # Resources

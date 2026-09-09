@@ -18,3 +18,4 @@ def cmd_launch():
 
 from .filter import launch_workflow as launch_workflow_filter
 from .generate import launch_workflow as launch_workflow_generate
+from .permeability import launch_workflow as launch_workflow_permeability
