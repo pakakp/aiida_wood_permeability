@@ -4,17 +4,6 @@ from aiida.cmdline.params import types
 from aiida.cmdline.params.options import OverridableOption
 import click
 
-# def validate_deformation_velocities(ctx, param, value):
-#     """Validate that the deformation velocities are a comma-separated list of positive floats."""
-#     if value is None:
-#         return None
-#     try:
-#         velocities = [float(v) for v in value.split(',')]
-#         if any(v <= 0 for v in velocities):
-#             raise ValueError
-#         return velocities
-#     except:
-#         raise click.BadParameter('Deformation velocities must be a comma-separated list of positive numbers.')
 
 def validate_resolution(ctx, param, value):
     """Validate that the resolution is a comma-separated list of three positive integers."""
@@ -46,6 +35,20 @@ PARAMS_FILE = OverridableOption(
     'params_file',
     type=click.Path(exists=True, dir_okay=False, readable=True),
     help='Path to a JSON file containing the simulation parameters.'
+)
+
+WOOD_STRUCTURE_FILE = OverridableOption(
+    '--wood-structure-file',
+    'wood_structure_file',
+    type=click.Path(exists=True, dir_okay=False, readable=True, resolve_path=True),
+    help='Path to a file containing the wood structure.'
+)
+
+WOOD_STRUCT_NODE = OverridableOption(
+    '--wood-structure-node',
+    'wood_structure_node',
+    type=types.DataParamType(sub_classes=('aiida.data:singlefile',)),
+    help='A SinglefileData node containing the wood structure.'
 )
 
 PARAM_CELL_R = OverridableOption(

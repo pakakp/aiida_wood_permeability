@@ -15,4 +15,6 @@ def cmd_launch():
 
 
 # Import the sub commands to register them with the CLI
-from .generate import launch_workflow
+
+from .filter import launch_workflow as launch_workflow_filter
+from .generate import launch_workflow as launch_workflow_generate

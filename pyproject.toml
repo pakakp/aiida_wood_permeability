@@ -28,10 +28,10 @@ tui = [
 aitw-permeability = 'aiida_wood_permeability.cli:cmd_root'
 
 [project.entry-points."aiida.workflows"]
-"aitw.wood_permeability.wood_structure_generator"      = "aiida_wood_permeability.workflows:WoodStructureGeneratorWorkChain"
-"aitw.wood_permeability.structure_filter"              = "aiida_wood_permeability.workflows:StructureFilterWorkChain"
+"aitw.wood_permeability.wood_structure_generator" = "aiida_wood_permeability.workflows:WoodStructureGeneratorWorkChain"
+"aitw.wood_permeability.structure_filter" = "aiida_wood_permeability.workflows:StructureFilterWorkChain"
 "aitw.wood_permeability.single_structure_permeability" = "aiida_wood_permeability.workflows:SingleStructurePermeabilityWorkChain"
-"aitw.wood_permeability.wood_permeability"             = "aiida_wood_permeability.workflows:WoodPermeabilityWorkChain"
+"aitw.wood_permeability.wood_permeability" = "aiida_wood_permeability.workflows:WoodPermeabilityWorkChain"
 
 [tool.setuptools.packages.find]
 where = ["."]
