@@ -3,14 +3,16 @@
 Collect filter results into filtered_structures.json.
 Merges with any existing file, deduplicating by workchain_pk.
 """
+import json
+import os
+
 from aiida import load_profile, orm
-import json, os
 
 load_profile()
 
-print("=" * 70)
-print("Collecting filtered structure results")
-print("=" * 70)
+print('=' * 70)
+print('Collecting filtered structure results')
+print('=' * 70)
 
 with open('submitted_filter_jobs.json') as f:
     submitted = json.load(f)
@@ -74,7 +76,7 @@ print(f"Total in file   : {len(merged)}")
 print(f"Saved to        : {output_file}")
 print(f"{'=' * 70}")
 if n_running:
-    print("\nSome jobs still running — re-run this script when they finish.")
+    print('\nSome jobs still running — re-run this script when they finish.')
 elif n_ok > 0 or n_already > 0:
-    print("\nRun next step:")
-    print("  python phase3_permeability.py")
+    print('\nRun next step:')
+    print('  python phase3_permeability.py')
