@@ -6,16 +6,17 @@ import copy
 import os
 
 from aiida import orm
-from aiida.engine import ToContext, WorkChain
+from aiida.engine import ToContext
 from aiida.plugins import CalculationFactory
 from aiida_shell import launch_shell_job
 
 from . import utils as utils
+from .base import BaseSehllJobChain
 
 ShellJob = CalculationFactory('core.shell')
 
 
-class WoodStructureGeneratorWorkChain(WorkChain):
+class WoodStructureGeneratorWorkChain(BaseSehllJobChain):
     """
     Generate a single wood microstructure from a base parameter file.
 
@@ -25,6 +26,7 @@ class WoodStructureGeneratorWorkChain(WorkChain):
     directly by FilterPenetrationWorkChain via the child ShellJob node
     and does not need to be a returned output of this workchain.
     """
+    shellcode_name = 'wood_ms_code'
 
     @classmethod
     def define(cls, spec):
@@ -57,22 +59,6 @@ class WoodStructureGeneratorWorkChain(WorkChain):
         #     help='Whether to save global distribution data'
         # )
 
-        spec.expose_inputs(
-            ShellJob,
-            namespace='shelljob',
-            include=('metadata', ),
-            namespace_options={
-                'required': True,
-                'populate_defaults': False,
-            }
-        )
-        spec.input(
-            'clean_workdir', valid_type=orm.Bool,
-            default=lambda: orm.Bool(False),
-            help='If `True`, work directories of all called calculation will be cleaned at the end of execution.'
-        )
-
-
         # ── OUTLINE ─────────────────────────────────────────────────────
         spec.outline(
             cls.setup,
@@ -99,18 +85,6 @@ class WoodStructureGeneratorWorkChain(WorkChain):
             401, 'ERROR_GENERATION_FAILED',
             message='Structure generation job failed'
         )
-
-    def setup(self):
-        """Log what we are about to generate."""
-        self.report(f"Generating {self.inputs.wood_type.value} structure:")
-
-        computer: orm.Computer = self.inputs.wood_ms_code.computer
-        metadata_tpl = dict(self.inputs.shelljob.metadata)
-
-        serial_mdata, parall_mdata = utils.create_metadata(computer, metadata_tpl, report_func=self.report)
-
-        self.ctx.serial_metadata = serial_mdata
-        self.ctx.parall_metadata = parall_mdata
 
     def prepare_input(self):
         """Prepare the input parameters for the structure generator, applying any overrides from the WC inputs."""
@@ -203,16 +177,3 @@ class WoodStructureGeneratorWorkChain(WorkChain):
         pp_file = res[self.ctx.parsed_params_fname.replace('.', '_')]
         pp_dict = utils.json_file_to_dict(pp_file)
         self.out('parsed_params', pp_dict)
-
-    def on_terminated(self):
-        """Clean the working directories of all child calculations if `clean_workdir=True` in the inputs."""
-        super().on_terminated()
-
-        if self.inputs.clean_workdir.value is False:
-            self.report('remote folders will not be cleaned')
-            return
-
-        cleaned_calcs = utils.clean_workchain_calcs(self.node)
-
-        if cleaned_calcs:
-            self.report(f"cleaned remote folders of calculations: {' '.join(map(str, cleaned_calcs))}")
