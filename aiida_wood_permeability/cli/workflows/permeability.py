@@ -11,22 +11,22 @@ from ..utils import launch, options
 
 @cmd_launch.command('permeability')
 # Required parameters
-@options.SCALING_FACTOR()
-@options.UPHYS()
 @options.LB_RESOLUTION()
-@options.INLET_PRESSURE()
-@options.TAU()
 @options.WALL_PERMEABILITY()
-@options.KINEMATIC_VISCOSITY()
-@options.FLUID_DENSITY()
-@options.TOLERANCE()
-@options.UNIFORM_GUO_ZHAO()
 # Codes
 @options.PERMEABILITY_CODE(required=True)
 # Either/or params
 @options.WOOD_STRUCTURE_FILE(required=False)
 @options.WOOD_STRUCT_NODE(required=False)
 # Optional parameters,
+@options.SCALING_FACTOR()
+@options.UPHYS()
+@options.TAU()
+@options.INLET_PRESSURE()
+@options.FLUID_DENSITY()
+@options.KINEMATIC_VISCOSITY()
+@options.TOLERANCE()
+@options.UNIFORM_GUO_ZHAO()
 @options.ARRAY_NAME(required=False)
 @options.CLEAN_WORKDIR()
 # Resources
@@ -38,22 +38,25 @@ from ..utils import launch, options
 @decorators.with_dbenv()
 def launch_workflow(
     # Required parameters
-    scaling_factor, uphys, resolution, inlet_pressure, tau,
-    wall_permeability, kinematic_viscosity, fluid_density,
-    tolerance, uniform_guo_zhao,
+    resolution, wall_permeability,
     # Codes
     permeability_code,
     # Either/or params
     wood_structure_file, wood_structure_node,
-    # Optional parameters,
-    array_name,
-    clean_workdir,
     # Resources
     num_nodes,
     num_mpiprocs_per_machine,
     max_wallclock_seconds,
     with_mpi,
-    daemon
+    daemon,
+    # Optional parameters,
+    clean_workdir,
+    # array_name,
+    # scaling_factor, uphys,
+    # inlet_pressure, tau,
+    # kinematic_viscosity, fluid_density,
+    # tolerance, uniform_guo_zhao,
+    **optional
 ):
     """Launch the infiltration workflow."""
     from aiida.plugins import WorkflowFactory
@@ -65,16 +68,8 @@ def launch_workflow(
     builder = workchain.get_builder()
 
     # Required parameters
-    params['scaling_factor'] = scaling_factor
-    params['uout'] = uphys
     params['resolution'] = resolution
-    params['pressure_drop'] = inlet_pressure
-    params['tau'] = tau
     params['dSolid'] = wall_permeability
-    params['kinematicViscosity'] = kinematic_viscosity
-    params['fluidDensity'] = fluid_density
-    params['tolerance'] = tolerance
-    params['uniformguozhao'] = uniform_guo_zhao
 
     # Codes
     builder.code = permeability_code
@@ -88,8 +83,10 @@ def launch_workflow(
         builder.vti_file = orm.SinglefileData(file=wood_structure_file)
 
     # Optional parameters
-    if array_name is not None:
-        params['arrayname'] = array_name
+    for opt_param, param_key in options.PERMEABILITY_PARAM_MAP.items():
+        value = optional.get(opt_param)
+        if value is not None:
+            params[param_key] = value
 
     builder.clean_workdir = orm.Bool(clean_workdir)
 

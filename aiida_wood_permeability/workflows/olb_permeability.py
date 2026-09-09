@@ -100,9 +100,18 @@ class OLBPermeabilityWorkChain(BaseSehllJobChain):
             'pressure_drop', 'tau', 'dSolid', 'kinematicViscosity',
             'fluidDensity', 'tolerance', 'flowDirection', 'uniformguozhao'
         ]
+
         defaults = {
             'arrayname': 'ImageFile',
+            'scaling_factor': 5e-7,
+            'uout': 1.0,
+            'tau': 1.0,
+            'pressure_drop': 10.0,
+            'kinematicViscosity': 1e-4,
+            'fluidDensity': 1.0,
+            'tolerance': 1e-6,
             'flowDirection': None,
+            'uniformguozhao': 1,
         }
 
         missing_keys = [key for key in keys if key not in params and key not in defaults]

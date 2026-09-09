@@ -80,7 +80,7 @@ def create_metadata(
     if 'num_mpiprocs_per_machine' in resources:
         nmpm = resources['num_mpiprocs_per_machine']
         report_func(
-            f'Using `num_mpiprocs_per_machine` from metadata: {nmpm} instead of value from'
+            f'Using `num_mpiprocs_per_machine` from metadata: {nmpm} instead of value from '
             f'computer {computer_num_mpiprocs}.'
         )
     else:

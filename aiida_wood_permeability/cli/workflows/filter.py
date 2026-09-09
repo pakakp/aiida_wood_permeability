@@ -16,7 +16,7 @@ from ..utils import launch, options
 @options.WOOD_STRUCTURE_FILE(required=False)
 @options.WOOD_STRUCT_NODE(required=False)
 # Optional parameters
-@options.PARAMS_FILE(required=False)
+@options.FILTER_PARAMS_FILE(required=False)
 @options.CLEAN_WORKDIR()
 # Resources
 # @options.NUM_NODES()
@@ -27,7 +27,7 @@ from ..utils import launch, options
 @decorators.with_dbenv()
 def launch_workflow(
     # Required parameters
-    params_file,
+    filter_params_file,
     # Codes
     wood_ms_code,
     # Either/or params
@@ -47,12 +47,12 @@ def launch_workflow(
     workchain = WorkflowFactory('aitw.wood_permeability.structure_filter')
 
     params = {}
-    if params_file is not None:
-        with open(params_file, 'r') as f:
+    if filter_params_file is not None:
+        with open(filter_params_file, 'r') as f:
             params = json.load(f)
 
     if not isinstance(params, dict):
-        raise click.BadParameter(f"Invalid parameter file: {params_file}. Expected a JSON object.")
+        raise click.BadParameter(f"Invalid parameter file: {filter_params_file}. Expected a JSON object.")
 
     builder = workchain.get_builder()
     builder.input_params = orm.Dict(dict=params)
