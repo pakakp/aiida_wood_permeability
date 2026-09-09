@@ -12,7 +12,6 @@ from aiida_shell import launch_shell_job
 
 from . import utils as utils
 
-BASENAME = 'aiida'
 ShellJob = CalculationFactory('core.shell')
 
 
@@ -33,7 +32,7 @@ class WoodStructureGeneratorWorkChain(WorkChain):
 
         # ── INPUTS ──────────────────────────────────────────────────────
         spec.input(
-            'generator_code', valid_type = orm.InstalledCode,
+            'wood_ms_code', valid_type = orm.InstalledCode,
             help = 'wood-microstructure generator code'
         )
         spec.input(
@@ -41,7 +40,7 @@ class WoodStructureGeneratorWorkChain(WorkChain):
             help = 'Wood species label, e.g. "birch" or "spruce"'
         )
         spec.input(
-            'base_params', valid_type = orm.Dict,
+            'input_params', valid_type = orm.Dict,
             help='Parameter dict for the structure generator'
         )
 
@@ -81,8 +80,6 @@ class WoodStructureGeneratorWorkChain(WorkChain):
             cls.prepare_input,
             cls.submit_generation,
             cls.inspect_generation,
-            # cls.generate,
-            # cls.check_result,
         )
 
         # ── OUTPUTS ─────────────────────────────────────────────────────
@@ -107,7 +104,7 @@ class WoodStructureGeneratorWorkChain(WorkChain):
         """Log what we are about to generate."""
         self.report(f"Generating {self.inputs.wood_type.value} structure:")
 
-        computer: orm.Computer = self.inputs.generator_code.computer
+        computer: orm.Computer = self.inputs.wood_ms_code.computer
         metadata_tpl = dict(self.inputs.shelljob.metadata)
 
         serial_mdata, parall_mdata = utils.create_metadata(computer, metadata_tpl, report_func=self.report)
@@ -117,7 +114,7 @@ class WoodStructureGeneratorWorkChain(WorkChain):
 
     def prepare_input(self):
         """Prepare the input parameters for the structure generator, applying any overrides from the WC inputs."""
-        params = self.inputs.base_params.get_dict()
+        params = self.inputs.input_params.get_dict()
         overrides = {}
         # if self.inputs.cellR:
         if 'cellR' in self.inputs and self.inputs.cellR:
@@ -171,7 +168,7 @@ class WoodStructureGeneratorWorkChain(WorkChain):
         metadata['call_link_label'] = 'generate'
 
         _, node = launch_shell_job(
-            self.inputs.generator_code,
+            self.inputs.wood_ms_code,
             arguments='generate {wood_type} --config-file {params_json}',
             nodes={
                 'params_json': self.ctx.json_input,
@@ -193,8 +190,7 @@ class WoodStructureGeneratorWorkChain(WorkChain):
         """Expose outputs or report failure."""
 
         calc = self.ctx.generate_calc
-        # Accept 410: ShellJob stderr warnings but outputs were produced successfully
-        if calc.exit_status not in [0, 410]:
+        if not calc.is_finished_ok:
             self.report(f"ERROR: Generation failed (PK {calc.pk}, exit {calc.exit_status})")
             return self.exit_codes.ERROR_GENERATION_FAILED
 

@@ -56,10 +56,10 @@ def launch_workflow(
 
         # Required parameters
         builder.wood_type = orm.Str(wood_type)
-        builder.base_params = orm.Dict(dict=param_set)
+        builder.input_params = orm.Dict(dict=param_set)
 
         # Codes
-        builder.generator_code = wood_ms_code
+        builder.wood_ms_code = wood_ms_code
 
         # Optional parameters
         if cell_r is not None:
