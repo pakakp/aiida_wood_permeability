@@ -14,6 +14,7 @@ requires-python = '>=3.9'
 dependencies = [
     'aiida-core>=2.5.1',
     'aiida-shell',
+    'numpy',
 ]
 
 [project.optional-dependencies]

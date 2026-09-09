@@ -50,14 +50,14 @@ class WoodStructureGeneratorWorkChain(BaseSehllJobChain):
         spec.input('cell_wall_thickness', valid_type=orm.Float, required=False, help='Cell wall thickness')
         spec.input('resolution', valid_type=orm.List, required=False, help='Resolution as [x, y, z]')
         spec.input('random_seed', valid_type=orm.Int, required=False, help='Random seed for structure generation')
-        # spec.input(
-        #     'save_local_dist', valid_type=orm.Bool, required=False,
-        #     help='Whether to save local distribution data'
-        # )
-        # spec.input(
-        #     'save_global_dist', valid_type=orm.Bool, required=False,
-        #     help='Whether to save global distribution data'
-        # )
+        spec.input(
+            'save_local_dist', valid_type=orm.Bool, required=False,
+            help='Whether to save local distribution data'
+        )
+        spec.input(
+            'save_global_dist', valid_type=orm.Bool, required=False,
+            help='Whether to save global distribution data'
+        )
 
         # ── OUTLINE ─────────────────────────────────────────────────────
         spec.outline(
@@ -78,6 +78,10 @@ class WoodStructureGeneratorWorkChain(BaseSehllJobChain):
             valid_type=orm.SinglefileData,
             dynamic=True,
             help='Final generated volume as a single file'
+        )
+        spec.output(
+            'distortion', valid_type=orm.ArrayData, required=False,
+            help='Local/Global deformation data (if saved)'
         )
 
         # ── EXIT CODES ───────────────────────────────────────────────────
@@ -110,23 +114,29 @@ class WoodStructureGeneratorWorkChain(BaseSehllJobChain):
             params.pop('random_seed', None)
             overrides['random_seed'] = self.inputs.random_seed
 
-        # if self.inputs.save_local_dist:
-        #     params.pop('writeLocalDeformData', None)
-        #     params.pop('save_local_dist', None)
-        #     overrides['save_local_dist'] = self.inputs.save_local_dist
-        # if self.inputs.save_global_dist:
-        #     params.pop('writeGlobalDeformData', None)
-        #     params.pop('save_global_dist', None)
-        #     overrides['save_global_dist'] = self.inputs.save_global_dist
+        if 'save_local_dist' in self.inputs and self.inputs.save_local_dist:
+            params.pop('writeLocalDeformData', None)
+            params.pop('save_local_dist', None)
+            overrides['save_local_dist'] = self.inputs.save_local_dist
+        if 'save_global_dist' in self.inputs and self.inputs.save_global_dist:
+            params.pop('writeGlobalDeformData', None)
+            params.pop('save_global_dist', None)
+            overrides['save_global_dist'] = self.inputs.save_global_dist
 
-        # self.ctx.save_local_dist = bool(self.inputs.save_local_dist.value)
-        # self.ctx.save_global_dist = bool(self.inputs.save_global_dist.value)
+        self.ctx.save_local_dist = bool(
+            overrides.get('save_local_dist',
+            params.get('save_local_dist', params.get('writeLocalDeformData', False)))
+        )
+        self.ctx.save_global_dist = bool(
+            overrides.get('save_global_dist',
+            params.get('save_global_dist', params.get('writeGlobalDeformData', False)))
+        )
+
         params.pop('writeLocalDeformData', None)
         params.pop('writeGlobalDeformData', None)
         params['save_slices_as_2d'] = False
         params['save_volume_as_3d'] = True
-        params['save_local_dist'] = False
-        params['save_global_dist'] = False
+        params['save_volume_format'] = 'vti'
 
         wood = self.inputs.wood_type.value.capitalize()
 
@@ -177,3 +187,7 @@ class WoodStructureGeneratorWorkChain(BaseSehllJobChain):
         pp_file = res[self.ctx.parsed_params_fname.replace('.', '_')]
         pp_dict = utils.json_file_to_dict(pp_file)
         self.out('parsed_params', pp_dict)
+
+        if self.ctx.save_local_dist or self.ctx.save_global_dist:
+            dist_node = utils.extract_distortion_data(folder)
+            self.out('distortion', dist_node)

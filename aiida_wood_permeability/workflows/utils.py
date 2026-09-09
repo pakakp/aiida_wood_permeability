@@ -1,10 +1,13 @@
 """Collection of utilities and calcfunctions used by the workchains."""
 import copy
+from functools import reduce
 import json
 import os
+import re
 
 from aiida import orm
 from aiida.engine import calcfunction
+import numpy as np
 
 
 @calcfunction
@@ -60,6 +63,47 @@ def extract_volumes_3d(folder: orm.FolderData) -> dict[str, orm.SinglefileData]:
             with folder.open(path, 'rb') as f:
                 res[target_files[base]] = orm.SinglefileData(file=f, filename=filename)
     return res
+
+def extract_distortion_data(folder: orm.FolderData) -> orm.ArrayData:
+    """Extract the distortion data from the output folder and return it as an ArrayData node."""
+    folder_map = {
+        'GlobalDistVolumeDispU': 'global_distortion_u',
+        'GlobalDistVolumeDispV': 'global_distortion_v',
+        'LocalDistVolumeDispU': 'local_distortion_u',
+        'LocalDistVolumeDispV': 'local_distortion_v',
+    }
+    # Files: [u/v]_volImgRef_XXXXX.csv
+    array_node = orm.ArrayData()
+    for folder_name, array_name in folder_map.items():
+        root = folder_name
+
+        typ = folder_name[-1].lower()
+        rgx = re.compile(rf'^{typ}_volImgRef_(\d+)\.csv$')
+
+        slices = {}
+        shape = None
+        for file_obj in folder.list_objects(path=root):
+            filename = file_obj.name
+            m = rgx.match(filename)
+            if m is None:
+                continue
+            idx = int(m.group(1)) - 1
+            with folder.open(os.path.join(root, filename), 'r') as f:
+                data = np.loadtxt(f, delimiter=',')
+            if shape is None:
+                shape = data.shape
+            else:
+                if data.shape != shape:
+                    raise ValueError(f"Shape mismatch in {filename}: expected {shape}, got {data.shape}")
+            slices[idx] = data
+
+        slices_sorted = [slices[i] for i in sorted(slices.keys())]
+
+        new = np.stack(slices_sorted, axis=2)
+        array_node.set_array(array_name, new)
+
+    array_node.store()
+    return array_node
 
 def create_metadata(
         computer: orm.Computer, metadata_tpl: dict, report_func = lambda msg: None

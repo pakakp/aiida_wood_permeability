@@ -8,7 +8,7 @@ Phase 3 – permeability sweep     (OLBPermeabilityWorkChain per VTI×dSolid)
 """
 
 from aiida import orm
-from aiida.engine import ToContext, WorkChain
+from aiida.engine import ToContext
 from aiida.plugins import CalculationFactory
 
 from .base import BaseSehllJobChain
