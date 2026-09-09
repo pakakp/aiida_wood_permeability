@@ -4,7 +4,7 @@ build-backend = 'flit_core.buildapi'
 
 [project]
 name = 'aiida-wood-permeability'
-version = '0.2.0'
+dynamic = ['version']
 description = 'AiiDA plugin for wood permeability calculations using OpenLB'
 authors = [
     {name = 'Antti Puisto', email = 'antti.puisto@vtt.fi'},
@@ -13,17 +13,25 @@ readme = 'README.md'
 requires-python = '>=3.9'
 dependencies = [
     'aiida-core>=2.5.1',
-    'aiida-shell',  # Much simpler than full CalcJob!
-    'numpy',
-    'vtk',
-    # Add wood_microstructure if needed
+    'aiida-shell',
 ]
 
+[project.optional-dependencies]
+pre-commit = [
+    'pre-commit',
+]
+tui = [
+    'trogon',
+]
+
+[project.scripts]
+aitw-permeability = 'aiida_wood_permeability.cli:cmd_root'
+
 [project.entry-points."aiida.workflows"]
-"wood_permeability.wood_structure_generator"      = "aiida_wood_permeability.workflows:WoodStructureGeneratorWorkChain"
-"wood_permeability.structure_filter"              = "aiida_wood_permeability.workflows:StructureFilterWorkChain"
-"wood_permeability.single_structure_permeability" = "aiida_wood_permeability.workflows:SingleStructurePermeabilityWorkChain"
-"wood_permeability.wood_permeability"             = "aiida_wood_permeability.workflows:WoodPermeabilityWorkChain"
+"aitw.wood_permeability.wood_structure_generator"      = "aiida_wood_permeability.workflows:WoodStructureGeneratorWorkChain"
+"aitw.wood_permeability.structure_filter"              = "aiida_wood_permeability.workflows:StructureFilterWorkChain"
+"aitw.wood_permeability.single_structure_permeability" = "aiida_wood_permeability.workflows:SingleStructurePermeabilityWorkChain"
+"aitw.wood_permeability.wood_permeability"             = "aiida_wood_permeability.workflows:WoodPermeabilityWorkChain"
 
 [tool.setuptools.packages.find]
 where = ["."]
@@ -31,3 +39,13 @@ include = ["aiida_wood_permeability*"]
 
 [tool.flit.module]
 name = 'aiida_wood_permeability'
+
+[tool.flynt]
+line-length = 120
+fail-on-change = true
+
+[tool.isort]
+force_sort_within_sections = true
+include_trailing_comma = true
+line_length = 120
+multi_line_output = 3  # this configuration is compatible with yapf
