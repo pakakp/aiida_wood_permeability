@@ -2,20 +2,20 @@
 """
 Phase 1: Generate wood structures (cubic and anisotropic dimensions)
 """
-from aiida import load_profile, orm
-from aiida_shell import launch_shell_job
+import itertools
 import json
 import tempfile
-import itertools
 
+from aiida import load_profile, orm
+from aiida_shell import launch_shell_job
 from wood_config import load_config
 
 load_profile()
 cfg = load_config()
 
-print("=" * 70)
-print("Phase 1: Generate Wood Structures")
-print("=" * 70)
+print('=' * 70)
+print('Phase 1: Generate Wood Structures')
+print('=' * 70)
 
 wood_type = cfg['wood_type']
 
@@ -103,7 +103,7 @@ print(f"\n{'=' * 70}")
 print(f"Submitted {len(submitted_jobs)} jobs to daemon")
 print(f"Saved to: {output_file}")
 print(f"{'=' * 70}")
-print("\nMonitor progress:")
-print("  verdi process list -a | grep wood-microstructure")
-print("\nCollect results when done:")
-print("  python collect_generated_structures.py")
+print('\nMonitor progress:')
+print('  verdi process list -a | grep wood-microstructure')
+print('\nCollect results when done:')
+print('  python collect_generated_structures.py')

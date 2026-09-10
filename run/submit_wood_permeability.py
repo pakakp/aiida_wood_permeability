@@ -4,16 +4,16 @@ Submit the fully automated generation + filter + permeability sweep.
 """
 from aiida import load_profile, orm
 from aiida.engine import submit
-from aiida_wood_permeability.workflows.wood_permeability import WoodPermeabilityWorkChain
-
 from wood_config import load_config, resolve_metadata_options
+
+from aiida_wood_permeability.workflows.wood_permeability import WoodPermeabilityWorkChain
 
 load_profile()
 cfg = load_config()
 
-print("=" * 70)
-print("Wood Permeability: Automated Generation + Filter + Permeability Sweep")
-print("=" * 70)
+print('=' * 70)
+print('Wood Permeability: Automated Generation + Filter + Permeability Sweep')
+print('=' * 70)
 
 # ── WOOD TYPE AND BASE PARAMETERS ─────────────────────────────────────
 wood_type = cfg['wood_type']
@@ -88,6 +88,6 @@ wc = submit(
 )
 
 print(f"Submitted WoodPermeabilityWorkChain -> PK {wc.pk}")
-print("\nMonitor:")
+print('\nMonitor:')
 print(f"  verdi process report {wc.pk}")
-print("  verdi process list -a | grep WoodPermeability")
+print('  verdi process list -a | grep WoodPermeability')

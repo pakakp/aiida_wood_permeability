@@ -3,14 +3,16 @@
 Collect permeability results into permeability_results.json and sweep_results.csv.
 Merges with any existing file, deduplicating by workchain_pk.
 """
+import json
+import os
+
 from aiida import load_profile, orm
-import json, os
 
 load_profile()
 
-print("=" * 70)
-print("Collecting permeability results")
-print("=" * 70)
+print('=' * 70)
+print('Collecting permeability results')
+print('=' * 70)
 
 with open('submitted_permeability_sweep.json') as f:
     submitted = json.load(f)
@@ -104,14 +106,14 @@ if merged:
         print(f"\nCSV saved to: {csv_file}")
         print(f"\n{df[['cellR','resolution','random_seed','actual_porosity','d_solid','k_x','k_y','k_z','k_avg']].to_string(index=False)}")
     except ImportError:
-        print("\n(Install pandas for CSV output: pip install pandas)")
+        print('\n(Install pandas for CSV output: pip install pandas)')
         print(f"\n{'cellR':>6} {'seed':>6} {'porosity':>9} {'actual_por':>10} "
               f"{'dSolid':>8} {'k_x':>12} {'k_y':>12} {'k_z':>12} {'k_avg':>12}")
-        print("-" * 90)
+        print('-' * 90)
         for e in sorted(merged, key=lambda x: (x['cellR'], x['random_seed'], x['porosity'], x['d_solid'])):
             print(f"  {e['cellR']:>4} {e['random_seed']:>6} {e['porosity']:>9.3f} "
                   f"{e['actual_porosity']:>10.4f} {e['d_solid']:>8.3f} "
                   f"{e['k_x']:>12.3e} {e['k_y']:>12.3e} {e['k_z']:>12.3e} {e['k_avg']:>12.3e}")
 
 if n_running:
-    print("\nSome jobs still running — re-run this script when they finish.")
+    print('\nSome jobs still running — re-run this script when they finish.')

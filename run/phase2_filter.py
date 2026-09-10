@@ -4,19 +4,19 @@ Phase 2: Filter structures from generated_structures.json.
 Submits one StructureFilterWorkChain per structure combination.
 Writes filtered_structures.json for use by phase3_permeability.py.
 """
+import json
+
 from aiida import load_profile, orm
 from aiida.engine import submit
 from aiida_wood_penetration.workflows.structure_filter import StructureFilterWorkChain
-import json
-
 from wood_config import load_config
 
 load_profile()
 cfg = load_config()
 
-print("=" * 70)
-print("Phase 2: Structure Filtering Sweep")
-print("=" * 70)
+print('=' * 70)
+print('Phase 2: Structure Filtering Sweep')
+print('=' * 70)
 
 # ── LOAD STRUCTURES ───────────────────────────────────────────────────
 with open('generated_structures.json') as f:
@@ -86,7 +86,7 @@ print(f"\n{'=' * 70}")
 print(f"Total filter jobs submitted: {len(submitted)}")
 print(f"Saved to: {output_file}")
 print(f"{'=' * 70}")
-print("\nMonitor:")
-print("  verdi process list -a | grep StructureFilter")
-print("\nCollect results when done:")
-print("  python collect_filtered_structures.py")
+print('\nMonitor:')
+print('  verdi process list -a | grep StructureFilter')
+print('\nCollect results when done:')
+print('  python collect_filtered_structures.py')

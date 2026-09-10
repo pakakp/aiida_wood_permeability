@@ -3,22 +3,21 @@
 Phase 3: Permeability sweep over filtered_structures.json.
 Writes submitted_permeability_sweep.json.
 """
+import itertools
+import json
+
 from aiida import load_profile, orm
 from aiida.engine import submit
-from aiida_wood_permeability.workflows.single_structure_permeability import (
-    SingleStructurePermeabilityWorkChain,
-)
-import json
-import itertools
-
 from wood_config import load_config, resolve_metadata_options
+
+from aiida_wood_permeability.workflows.olb_permeability import OLBPermeabilityWorkChain
 
 load_profile()
 cfg = load_config()
 
-print("=" * 70)
-print("Phase 3: Permeability Tensor Sweep")
-print("=" * 70)
+print('=' * 70)
+print('Phase 3: Permeability Tensor Sweep')
+print('=' * 70)
 
 with open('filtered_structures.json') as f:
     filtered_structures = json.load(f)
@@ -54,7 +53,7 @@ for flt in filtered_structures:
         permeability_params = orm.Dict(dict=params)
 
         wc = submit(
-            SingleStructurePermeabilityWorkChain,
+            OLBPermeabilityWorkChain,
             code=permeability_code,
             vti_file=vti_file,
             parameters=permeability_params,
@@ -100,7 +99,7 @@ print(f"\n{'=' * 70}")
 print(f"Total permeability jobs submitted: {len(submitted)}")
 print(f"Saved to: {output_file}")
 print(f"{'=' * 70}")
-print("\nMonitor:")
-print("  verdi process list -a | grep SingleStructurePermeability")
-print("\nCollect results when done:")
-print("  python collect_permeability_results.py")
+print('\nMonitor:')
+print('  verdi process list -a | grep SingleStructurePermeability')
+print('\nCollect results when done:')
+print('  python collect_permeability_results.py')

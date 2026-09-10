@@ -2,145 +2,192 @@
 Single wood structure generation workflow.
 Wraps the structure generator ShellJob for use as a sub-workchain.
 """
-import json
-import tempfile
+import copy
+import os
 
 from aiida import orm
-from aiida.engine import WorkChain, ToContext, calcfunction
+from aiida.engine import ToContext
+from aiida.plugins import CalculationFactory
 from aiida_shell import launch_shell_job
 
+from . import utils as utils
+from .base import BaseSehllJobChain
 
-@calcfunction
-def parse_dir_name(output_dir_txt):
-    """
-    Read the directory name written by the structure generator and return
-    it as a stored Str node.  A calcfunction is required because AiiDA
-    forbids WorkChains from returning bare (unstored) Data nodes.
-    """
-    with output_dir_txt.open() as f:
-        return orm.Str(f.read().strip())
+ShellJob = CalculationFactory('core.shell')
 
 
-class WoodStructureGeneratorWorkChain(WorkChain):
+class WoodStructureGeneratorWorkChain(BaseSehllJobChain):
     """
     Generate a single wood microstructure from a base parameter file.
 
     Runs the structure generator script and outputs only the directory
-    name written to output_dir.txt.  The SaveWood.tar.gz is consumed
+    name written to output_dir.txt.
+    The SaveWood.tar.gz is consumed
     directly by FilterPenetrationWorkChain via the child ShellJob node
     and does not need to be a returned output of this workchain.
     """
+    shellcode_name = 'wood_ms_code'
 
     @classmethod
     def define(cls, spec):
         super().define(spec)
 
         # ── INPUTS ──────────────────────────────────────────────────────
-        spec.input('generator_code', valid_type=orm.InstalledCode,
-                   help='wood-microstructure generator code (local)')
-        spec.input('wood_type', valid_type=orm.Str,
-                   help='Wood species label, e.g. "birch" or "spruce"')
-        spec.input('base_params', valid_type=orm.SinglefileData,
-                   help='Base JSON parameter file for the structure generator')
-        spec.input('cellR', valid_type=orm.Int,
-                   help='Cell radius')
-        spec.input('resolution', valid_type=orm.List,
-                   help='Resolution as [x, y, z]')
-        spec.input('random_seed', valid_type=orm.Int,
-                   help='Random seed for structure generation')
+        spec.input(
+            'wood_ms_code', valid_type = orm.InstalledCode,
+            help = 'wood-microstructure generator code'
+        )
+        spec.input(
+            'wood_type', valid_type = orm.Str,
+            help = 'Wood species label, e.g. "birch" or "spruce"'
+        )
+        spec.input(
+            'input_params', valid_type = orm.Dict,
+            help='Parameter dict for the structure generator'
+        )
+
+        spec.input('cellR', valid_type=orm.Int, required=False, help='Cell radius')
+        spec.input('cell_wall_thickness', valid_type=orm.Float, required=False, help='Cell wall thickness')
+        spec.input('resolution', valid_type=orm.List, required=False, help='Resolution as [x, y, z]')
+        spec.input('random_seed', valid_type=orm.Int, required=False, help='Random seed for structure generation')
+        spec.input(
+            'save_local_dist', valid_type=orm.Bool, required=False,
+            help='Whether to save local distribution data'
+        )
+        spec.input(
+            'save_global_dist', valid_type=orm.Bool, required=False,
+            help='Whether to save global distribution data'
+        )
 
         # ── OUTLINE ─────────────────────────────────────────────────────
         spec.outline(
             cls.setup,
-            cls.generate,
-            cls.check_result,
+
+            cls.prepare_input,
+            cls.submit_generation,
+            cls.inspect_generation,
         )
 
         # ── OUTPUTS ─────────────────────────────────────────────────────
-        # structure_tar is intentionally NOT exposed as a workchain output.
-        # It is accessed directly from the child ShellJob by the parent
-        # WoodPenetrationWorkChain via node.called[0].outputs['SaveWood_tar_gz'].
-        spec.output('dir_name', valid_type=orm.Str,
-                    help='Name of the directory inside the tar archive')
-
-        # ── EXIT CODES ───────────────────────────────────────────────────
-        spec.exit_code(401, 'ERROR_GENERATION_FAILED',
-                       message='Structure generation job failed')
-
-    def setup(self):
-        """Log what we are about to generate."""
-        self.report(
-            f"Generating {self.inputs.wood_type.value} structure: "
-            f"cellR={self.inputs.cellR.value}, "
-            f"cellWallThick={self.inputs.cell_wall_thickness.value}, "
-            f"resolution={self.inputs.resolution.get_list()}, "
-            f"seed={self.inputs.random_seed.value}"
+        spec.output(
+            'parsed_params', valid_type=orm.Dict,
+            help='Parsed parameters used for the structure generation'
+        )
+        spec.output_namespace(
+            'volume',
+            valid_type=orm.SinglefileData,
+            dynamic=True,
+            help='Final generated volume as a single file'
+        )
+        spec.output(
+            'distortion', valid_type=orm.ArrayData, required=False,
+            help='Local/Global deformation data (if saved)'
         )
 
-    def generate(self):
-        """Build the parameter dict and launch the generator ShellJob."""
-        with self.inputs.base_params.open() as f:
-            base_data = json.load(f)
-        base_params = base_data[0] if isinstance(base_data, list) else base_data
+        # ── EXIT CODES ───────────────────────────────────────────────────
+        spec.exit_code(
+            401, 'ERROR_GENERATION_FAILED',
+            message='Structure generation job failed'
+        )
 
-        structure_params = base_params.copy()
-        structure_params['cellR'] = self.inputs.cellR.value
-        structure_params['cellWallThick'] = self.inputs.cell_wall_thickness.value
-        structure_params['sizeVolume']  = self.inputs.resolution.get_list()
-        structure_params['random_seed'] = self.inputs.random_seed.value
+    def prepare_input(self):
+        """Prepare the input parameters for the structure generator, applying any overrides from the WC inputs."""
+        params = self.inputs.input_params.get_dict()
+        overrides = {}
+        # if self.inputs.cellR:
+        if 'cellR' in self.inputs and self.inputs.cellR:
+            params.pop('cellR', None)
+            params.pop('cell_r', None)
+            overrides['cell_r'] = self.inputs.cellR
+        # if self.inputs.cell_wall_thickness:
+        if 'cell_wall_thickness' in self.inputs and self.inputs.cell_wall_thickness:
+            params.pop('cellWallThick', None)
+            params.pop('cell_wall_thickness', None)
+            overrides['cell_wall_thickness'] = self.inputs.cell_wall_thickness
+        # if self.inputs.resolution:
+        if 'resolution' in self.inputs and self.inputs.resolution:
+            params.pop('sizeVolume', None)
+            params.pop('size_volume', None)
+            overrides['size_volume'] = self.inputs.resolution
+        # if self.inputs.random_seed:
+        if 'random_seed' in self.inputs and self.inputs.random_seed:
+            params.pop('random_seed', None)
+            overrides['random_seed'] = self.inputs.random_seed
 
-        with tempfile.NamedTemporaryFile(
-            mode='w', suffix='.json', delete=False
-        ) as tmp:
-            json.dump([structure_params], tmp)
-            json_path = tmp.name
+        if 'save_local_dist' in self.inputs and self.inputs.save_local_dist:
+            params.pop('writeLocalDeformData', None)
+            params.pop('save_local_dist', None)
+            overrides['save_local_dist'] = self.inputs.save_local_dist
+        if 'save_global_dist' in self.inputs and self.inputs.save_global_dist:
+            params.pop('writeGlobalDeformData', None)
+            params.pop('save_global_dist', None)
+            overrides['save_global_dist'] = self.inputs.save_global_dist
 
-        params_node = orm.SinglefileData(file=json_path)
+        self.ctx.save_local_dist = bool(
+            overrides.get('save_local_dist',
+            params.get('save_local_dist', params.get('writeLocalDeformData', False)))
+        )
+        self.ctx.save_global_dist = bool(
+            overrides.get('save_global_dist',
+            params.get('save_global_dist', params.get('writeGlobalDeformData', False)))
+        )
+
+        params.pop('writeLocalDeformData', None)
+        params.pop('writeGlobalDeformData', None)
+        params['save_slices_as_2d'] = False
+        params['save_volume_as_3d'] = True
+        params['save_volume_format'] = 'vti'
+
+        wood = self.inputs.wood_type.value.capitalize()
+
+        self.ctx.json_input = utils.dict_to_json_file(params, **overrides)
+        self.ctx.outdir_name = f'Save{wood}_0'
+        self.ctx.parsed_params_fname = 'params.json'
+
+    def submit_generation(self):
+        """Run the structure generator script as a ShellJob and store the node in context."""
+        self.report(f"Submitting structure generation job for {self.inputs.wood_type.value}...")
+
+        metadata = copy.deepcopy(self.ctx.serial_metadata)
+        metadata['call_link_label'] = 'generate'
 
         _, node = launch_shell_job(
-            self.inputs.generator_code,
-            arguments=[
-                '/home/akpantti/bin/structure_generator.py',
-                '{params_json}',
-                self.inputs.wood_type.value,
-            ],
-            nodes={'params_json': params_node},
-            filenames={'params_json': 'params.json'},
-            outputs=['output_dir.txt', 'SaveWood.tar.gz'],
-            metadata={
-                'call_link_label': 'generate',
-                'options': {
-                    'resources': {
-                        'num_machines': 1,
-                        'num_mpiprocs_per_machine': 1,
-                    },
-                    'max_wallclock_seconds': 12000,
-                    'queue_name': 'gen04_epyc',
-                    'custom_scheduler_commands': '#SBATCH --mem=16G',
-                    'withmpi': False,
-                },
+            self.inputs.wood_ms_code,
+            arguments='generate {wood_type} --config-file {params_json}',
+            nodes={
+                'params_json': self.ctx.json_input,
+                'wood_type': self.inputs.wood_type,
             },
+            outputs=[
+                self.ctx.outdir_name,
+                os.path.join(self.ctx.outdir_name, self.ctx.parsed_params_fname)
+            ],
+            metadata=metadata,
             submit=True,
         )
 
-        node.base.extras.set('wood_type', self.inputs.wood_type.value)
-        node.base.extras.set('cellR', self.inputs.cellR.value)
-        node.base.extras.set('cellWallThickness', self.inputs.cell_wall_thickness.value)
-        node.base.extras.set('resolution', self.inputs.resolution.get_list())
-        node.base.extras.set('random_seed', self.inputs.random_seed.value)
+        self.report(f"Submitted structure generation job (PK {node.pk})")
 
-        return ToContext(generation=node)
+        return ToContext(generate_calc=node)
 
-    def check_result(self):
+    def inspect_generation(self):
         """Expose outputs or report failure."""
-        # Accept 410: ShellJob stderr warnings but outputs were produced successfully
-        if self.ctx.generation.exit_status not in [0, 410]:
-            self.report(f"ERROR: Generation failed (PK {self.ctx.generation.pk}, "
-                        f"exit {self.ctx.generation.exit_status})")
+
+        calc = self.ctx.generate_calc
+        if not calc.is_finished_ok:
+            self.report(f"ERROR: Generation failed (PK {calc.pk}, exit {calc.exit_status})")
             return self.exit_codes.ERROR_GENERATION_FAILED
 
-        dir_name = parse_dir_name(self.ctx.generation.outputs['output_dir_txt'])
-        self.out('dir_name', dir_name)
+        res = calc.outputs
 
-        tar_pk = self.ctx.generation.outputs['SaveWood_tar_gz'].pk
-        self.report(f"✓ Structure generated: {dir_name.value} (tar PK {tar_pk})")
+        folder: orm.FolderData = res[self.ctx.outdir_name]
+        volumes = utils.extract_volumes_3d(folder)
+
+        self.out('volume', volumes)
+        pp_file = res[self.ctx.parsed_params_fname.replace('.', '_')]
+        pp_dict = utils.json_file_to_dict(pp_file)
+        self.out('parsed_params', pp_dict)
+
+        if self.ctx.save_local_dist or self.ctx.save_global_dist:
+            dist_node = utils.extract_distortion_data(folder)
+            self.out('distortion', dist_node)
